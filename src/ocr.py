@@ -9,12 +9,12 @@ import io
 from fastapi import HTTPException
 from pydantic import BaseModel
 
-modal_image = modal.Image.debian_slim(python_version="3.12").pip_install("pytesseract", "Pillow", "opencv-python-headless", "numpy", "fastapi[standard]").apt_install(['tesseract-ocr', 'tesseract-ocr-por', 'tesseract-ocr-eng'])
+modal_image = modal.Image.debian_slim(python_version="3.12").pip_install("pytesseract", "Pillow", "opencv-python-headless", "numpy", "fastapi[standard]").apt_install(['tesseract-ocr', 'tesseract-ocr-por', 'tesseract-ocr-eng', 'tesseract-ocr-spa', 'tesseract-ocr-fra'])
 app = modal.App("ocr-app", image=modal_image)
 
 class ImageRequest(BaseModel):
     image_data: str
-    language: str = "eng"
+    language: str = "auto"
 
 
 def download_tesseract():
@@ -62,9 +62,10 @@ def extract_text(request: ImageRequest) -> dict:
     processed_image = process_image_for_ocr(request.image_data)
 
     custom_config = "--oem 1 --psm 3 "
+    language = request.language if request.language != "auto" else None
 
     try:
-        text = pytesseract.image_to_string(processed_image, config=custom_config, lang=request.language)
+        text = pytesseract.image_to_string(processed_image, config=custom_config, lang=language)
         return {"text": text.strip(), "language": request.language}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
